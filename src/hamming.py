@@ -4,6 +4,7 @@ from typing import List
 class Command(Enum):
     CHECK = "CHECK".upper()
     ENCODE = "ENCODE".upper()
+    MINIMUM_DISTANCE = "MINDIST".upper()
 
 class Hamming:
     @staticmethod
@@ -17,6 +18,9 @@ class Hamming:
                 
             case Command.ENCODE.value:
                 return Hamming.encode(input[1:])
+            
+            case Command.MINIMUM_DISTANCE.value:
+                return Hamming.get_minimum_distance(input[1:])
 
             case _:
                 result = "\"" + input_head + "\" is not supported for Hamming codes."
@@ -122,6 +126,29 @@ class Hamming:
         return "Generated Hamming codeword as " + str(codeword) + "\n"
 
     @staticmethod
+    def get_minimum_distance(input: List[str]):
+        hamming = Hamming.to2d(input[0], int(input[1]))
+
+        min_dist = 9999999
+        row_orig = 0
+        for row in hamming:
+            for comp_index in range(row_orig + 1, len(hamming)):
+                comp_row = hamming[comp_index]
+                curr_dist = 0
+                for index in range(len(row)):
+                    if row[index] != comp_row[index]:
+                        curr_dist += 1
+            if curr_dist < min_dist: min_dist = curr_dist
+            row_orig += 1
+        
+        return "Minimum distance is " + str(min_dist) + ", correctable errors is " + str((min_dist - 1) // 2) + ".\n"
+
+    # Generating all keywords
+    @staticmethod
+    def get_min_weight():
+        pass
+
+    @staticmethod
     def get_col_matrix(matrix, length):
         height = len(matrix) // length
         return [matrix[i:i + height] for i in range(0, len(matrix), height)]
@@ -134,6 +161,7 @@ class Hamming:
 
     @staticmethod
     def to2d(matrix, length):
+        matrix = [int(char) for char in matrix]
         height = len(matrix) // length
         result = [[None] * length for _ in range(height)]
         for index, value in enumerate(matrix):

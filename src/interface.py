@@ -1,17 +1,16 @@
-from enum import Enum
-
-import sys
-
 from ascii import ASCII
-from isbn import ISBN
+from enum import Enum
 from hamming import Hamming
+from isbn import ISBN
+from misc import *
 
 class Command(Enum):
     CODEWORD = "CODEWORD".upper()
-    ISBN = "ISBN".upper()
     HAMMING = "HAMMING".upper()
     HELP = "HELP".upper()
+    ISBN = "ISBN".upper()
     QUIT = "QUIT".upper()
+    SPHERE_PACKING = "SPB".upper()
 
 class Interface:
     exit_flag = False
@@ -36,21 +35,24 @@ class Interface:
                 self.print(ASCII.get_codeword(query_tokens[1:]))
                 return
 
-            case Command.ISBN.value:
-                self.print(ISBN.main(query_tokens[1:]))
-                return
-
             case Command.HAMMING.value:
                 self.print(Hamming.main(query_tokens[1:]))
                 return
 
             case Command.HELP.value:
-                self.print("TODO write help text")
+                self.print(Misc.get_help_message())
+                return
+
+            case Command.ISBN.value:
+                self.print(ISBN.main(query_tokens[1:]))
                 return
 
             case Command.QUIT.value:
                 self.exit_flag = True
                 return
+            
+            case Command.SPHERE_PACKING.value:
+                self.print(Misc.sphere_packing_bounds(query_tokens[1:]))
 
             case _:
                 self.print("\"" + query_head + "\" is not a supported command.")

@@ -5,6 +5,7 @@ class ASCII:
     def get_codeword(input: List[str]):
         codeword = list("00000000")
         words = "".join(input)
+        
         for char in words:
             word_binary = list(format(ord(char), "08b"))
             for pos in range(8):
