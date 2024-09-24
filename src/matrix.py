@@ -2,7 +2,7 @@ from typing import List
 import numbers
 import sympy as sp
 import numpy as np
-from itertools import product
+import itertools as it
 
 # Custom matrix class to handle required operations and cleanup bloat in other files.
 class Matrix:
@@ -57,13 +57,26 @@ class Matrix:
             self.matrix[row][col] = value
     
     def nullspace(self):
-        return [Matrix(vector.T.tolist()[0], length=1, base=self.base)
+        return [Matrix([item for row in vector.T.tolist() for item in row], length=1, base=self.base)
                 for vector in sp.Matrix(self.matrix).nullspace()]
     
     def row_reduce(self):
         row_reduced, pivot = sp.Matrix(self.matrix).rref()
-        return Matrix(row_reduced.T.tolist()[0], length=self.length, base=self.base)
+        return Matrix([item for row in row_reduced.T.tolist() for item in row], length=self.length, base=self.base)
     
+    # Brute force generate all nullspace.
+    def all_nullspace_bf(self):
+        all_vectors = list(it.product(range(self.base), repeat=self.length))
+        nullspace = []
+        for vector in all_vectors:
+            v_matrix = Matrix(list(vector), length=1, base=self.base)
+            result = matrix * v_matrix
+            if all(var == 0 for var in [item for row in result.matrix for item in row]):
+                nullspace.append(v_matrix)
+
+        return nullspace
+
+    # Currently does not actually generate the whole nullspace. TODO: fix!!
     def all_nullspace(self):
         nullspace_vectors = self.nullspace()
 
@@ -74,7 +87,7 @@ class Matrix:
         num_vectors = len(nullspace_vectors)
         coefficients = range(self.base)
 
-        for coeffs in product(coefficients, repeat=num_vectors):
+        for coeffs in it.product(coefficients, repeat=num_vectors):
             combination = Matrix([0] * (nullspace_vectors[0].height * nullspace_vectors[0].length),
                                 height=nullspace_vectors[0].height,
                                 length=nullspace_vectors[0].length,
@@ -153,10 +166,11 @@ class Matrix:
         else:
             # Matrix multiplication handled by __mul__()
             return NotImplemented
-    
-linear_code = Matrix("010010001110011011011", height=3, base=2).row_reduce()
-answer = Matrix("0111001", length=1, base=2)
-print(linear_code * answer)
-# all_nulls = linear_code.all_nullspace()
-# for null_vector in all_nulls:
-#     print(null_vector.transpose())
+
+matrix = Matrix("42024420", height=2, base=5)
+answer = Matrix("0121", length=1, base=5)
+print(matrix * answer)
+all_nulls = matrix.all_nullspace_bf()
+print(answer in all_nulls)
+for null_vector in all_nulls:
+    print(null_vector.transpose())
