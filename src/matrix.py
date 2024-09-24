@@ -70,7 +70,7 @@ class Matrix:
         nullspace = []
         for vector in all_vectors:
             v_matrix = Matrix(list(vector), length=1, base=self.base)
-            result = matrix * v_matrix
+            result = self * v_matrix
             if all(var == 0 for var in [item for row in result.matrix for item in row]):
                 nullspace.append(v_matrix)
 
@@ -166,11 +166,15 @@ class Matrix:
         else:
             # Matrix multiplication handled by __mul__()
             return NotImplemented
-
-matrix = Matrix("42024420", height=2, base=5)
-answer = Matrix("0121", length=1, base=5)
-print(matrix * answer)
-all_nulls = matrix.all_nullspace_bf()
-print(answer in all_nulls)
-for null_vector in all_nulls:
-    print(null_vector.transpose())
+        
+class MatrixSolver():
+    @staticmethod
+    def find_null_vector(matrix: Matrix, fixed_vector: str):
+        if len(fixed_vector) != matrix.length: return "Fixed vector is an incorrect length.\n"
+        if any(not (char.isnumeric() or char == "_") for char in fixed_vector): return "Fixed vector is not formatted correctly.\n"
+        fixed_positions = [index for index, char in enumerate(fixed_vector) if char != '_']
+        for null_vector in matrix.all_nullspace_bf():
+            if all(null_vector.matrix[i][0] == int(fixed_vector[i]) for i in fixed_positions):
+                return "Null vector found as " + str(null_vector.transpose()) + ".\n"
+        return "No null vector fitting the pattern could be found.\n"
+    

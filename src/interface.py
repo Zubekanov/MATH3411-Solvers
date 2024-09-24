@@ -2,6 +2,7 @@ from ascii import ASCII
 from enum import Enum
 from hamming import Hamming
 from isbn import ISBN
+from matrix import *
 from misc import *
 
 class Command(Enum):
@@ -9,6 +10,7 @@ class Command(Enum):
     HAMMING = "HAMMING".upper()
     HELP = "HELP".upper()
     ISBN = "ISBN".upper()
+    NULL = "NULL".upper()
     QUIT = "QUIT".upper()
     SPHERE_PACKING = "SPB".upper()
 
@@ -45,6 +47,10 @@ class Interface:
 
             case Command.ISBN.value:
                 self.print(ISBN.main(query_tokens[1:]))
+                return
+
+            case Command.NULL.value:
+                self.print(MatrixSolver.find_null_vector(Matrix(query_tokens[1], length=int(query_tokens[2]), base=int(query_tokens[3])) , query_tokens[4]))
                 return
 
             case Command.QUIT.value:
