@@ -60,6 +60,10 @@ class Matrix:
         return [Matrix(vector.T.tolist()[0], length=1, base=self.base)
                 for vector in sp.Matrix(self.matrix).nullspace()]
     
+    def row_reduce(self):
+        row_reduced, pivot = sp.Matrix(self.matrix).rref()
+        return Matrix(row_reduced.T.tolist()[0], length=self.length, base=self.base)
+    
     def all_nullspace(self):
         nullspace_vectors = self.nullspace()
 
@@ -150,7 +154,7 @@ class Matrix:
             # Matrix multiplication handled by __mul__()
             return NotImplemented
     
-linear_code = Matrix("010010001110011011011", height=3, base=2)
+linear_code = Matrix("010010001110011011011", height=3, base=2).row_reduce()
 answer = Matrix("0111001", length=1, base=2)
 print(linear_code * answer)
 # all_nulls = linear_code.all_nullspace()
