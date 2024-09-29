@@ -7,9 +7,9 @@ from misc import *
 
 class Command(Enum):
     CODEWORD = "CODEWORD".upper()
-    HAMMING = "HAMMING".upper()
     HELP = "HELP".upper()
     ISBN = "ISBN".upper()
+    MUL = "MUL".upper()
     NULL = "NULL".upper()
     QUIT = "QUIT".upper()
     SPHERE_PACKING = "SPB".upper()
@@ -35,10 +35,6 @@ class Interface:
         match query_head.upper():
             case Command.CODEWORD.value:
                 self.print(ASCII.get_codeword(query_tokens[1:]))
-                return
-
-            case Command.HAMMING.value:
-                self.print(Hamming.main(query_tokens[1:]))
                 return
 
             case Command.HELP.value:
