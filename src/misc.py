@@ -4,8 +4,14 @@ import math
 class Misc:
     @staticmethod
     def get_help_message():
-        return ("CODEWORD string\n"
+        return ("BASIS matrix length base message\n"
+                "Given a matrix with specified length and base, encodes the message with \"_\" at the parity bits.\n\n"
+                "CODEWORD string\n"
                 "Given a string, generates the ASCII character that provides the parity check for the string with the binary representation.\n\n"
+                "CORRECT binary\n"
+                "Identifies a single error in an ASCII binary string.\n\n"
+                "CHECK base matrix codeword\n"
+                "Checks codeword against a linear code and attempts to correct a signle error.\n\n"
                 "HELP\n"
                 "Prints this message to interface.\n\n"
                 "ISBN isbn\n"

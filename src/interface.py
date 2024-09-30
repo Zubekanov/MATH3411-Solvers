@@ -6,13 +6,16 @@ from matrix import *
 from misc import *
 
 class Command(Enum):
-    CODEWORD = "CODEWORD".upper()
-    HELP = "HELP".upper()
-    ISBN = "ISBN".upper()
-    MUL = "MUL".upper()
-    NULL = "NULL".upper()
-    QUIT = "QUIT".upper()
-    SPHERE_PACKING = "SPB".upper()
+    BASIS           = "BASIS".upper()
+    CODEWORD        = "CODEWORD".upper()
+    CORRECT         = "CORRECT".upper()
+    CHECK           = "CHECK".upper()
+    HELP            = "HELP".upper()
+    ISBN            = "ISBN".upper()
+    MUL             = "MUL".upper()
+    NULL            = "NULL".upper()
+    QUIT            = "QUIT".upper()
+    SPHERE_PACKING  = "SPB".upper()
 
 class Interface:
     exit_flag = False
@@ -33,8 +36,20 @@ class Interface:
         
         query_head = query_tokens[0]
         match query_head.upper():
+            case Command.BASIS.value:
+                self.print(MatrixSolver.find_span_vector(Matrix(query_tokens[1], length=int(query_tokens[2]), base=int(query_tokens[3])) , query_tokens[4]))
+                return
+
             case Command.CODEWORD.value:
                 self.print(ASCII.get_codeword(query_tokens[1:]))
+                return
+            
+            case Command.CORRECT.value:
+                self.print(ASCII.correct_error(query_tokens[1:]))
+                return
+            
+            case Command.CHECK.value:
+                self.print(MatrixSolver.check_codeword(query_tokens[1:]))
                 return
 
             case Command.HELP.value:
