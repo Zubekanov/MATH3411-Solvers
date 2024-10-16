@@ -8,14 +8,24 @@ class Misc:
                 "Given a matrix with specified length and base, encodes the message with \"_\" at the parity bits.\n\n"
                 "CODEWORD string\n"
                 "Given a string, generates the ASCII character that provides the parity check for the string with the binary representation.\n\n"
+                "COMMA decode/encode message\n"
+                "Decodes or encodes a comma code.\n\n"
                 "CORRECT binary\n"
                 "Identifies a single error in an ASCII binary string.\n\n"
                 "CHECK base matrix codeword\n"
                 "Checks codeword against a linear code and attempts to correct a signle error.\n\n"
+                "DECODABLE codewords | candidates\n"
+                "Checks the candidate codewords to see if they are decodable with the given codewords.\n\n"
+                "EXTENSION radix extension denominator numerators\n"
+                "Calculates the average length of the extension.\n\n"
                 "HELP\n"
                 "Prints this message to interface.\n\n"
+                "HUFFMAN radix denominator numerators\n"
+                "Gives the average length of the Huffman code given radix and probabilities."
                 "ISBN isbn\n"
                 "Given a list of ISBNs, calculates the syndrome for each, or calculates a missing character signified with \"_\".\n\n"
+                "KMT radix K codeword_lengths\n"
+                "Applies Kraft-Mcmillan Theorem with one non-numeric unknown.\n\n"
                 "MUL base matrix length other length\n"
                 "Multiplies the first matrix by the other matrix in the given base.\n\n"
                 "NULL matrix length base message\n"
@@ -23,7 +33,8 @@ class Misc:
                 "QUIT\n"
                 "Exits the interface.\n\n"
                 "SPB message errors radix length\n"
-                "Given three parameters and one nonnumeric unknown, solves for the unknown.\n\n")
+                "Given three parameters and one nonnumeric unknown, solves for the unknown.\n\n"
+                )
 
     # Solves for one unknown in the sphere packing theorem
     # errors = minimum distance - 1 // 2
