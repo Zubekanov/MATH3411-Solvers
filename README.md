@@ -16,10 +16,6 @@
     ```bash
     cd MATH3411-Solvers
     ```
-3. Install any required dependencies (if applicable):
-    ```bash
-    pip install -r requirements.txt
-    ```
 
 ### Running the Application
 To run the solver interface, execute the following command:
