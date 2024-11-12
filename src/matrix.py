@@ -1,13 +1,13 @@
 from typing import List
 import numbers
 import sympy as sp
-import numpy as np
 import itertools as it
+import math
 
 # Custom matrix class to handle required operations and cleanup bloat in other files.
 class Matrix:
     # May have to upgrade to floats soon.
-    matrix: List[List[int]]
+    matrix: List[List[float]]
     height: int
     length: int
     base: int = None
@@ -17,8 +17,6 @@ class Matrix:
         if height == None and length == None: raise Exception("Matrix must initialise with height or length.")
         if direction.upper() not in ("COLS", "ROWS"): raise Exception("Matrix has invalid direction.")
         if isinstance(contents, str): contents = contents.split()
-        if any(not isinstance(item, (numbers.Number, str)) or (isinstance(item, str) and not item.isnumeric()) for item in contents):
-            raise Exception("Matrix contents must be numeric.")
         
         # Dimension calculation and checking.
         m_len = len(contents)
@@ -38,7 +36,7 @@ class Matrix:
         if height * length != m_len:
             raise Exception("Matrix contents have invalid dimensions.")
         
-        contents = [int(item) for item in contents]
+        contents = [float(item) for item in contents]
         if base:
             self.base = base
             contents = [item % base for item in contents]
@@ -194,8 +192,57 @@ class Matrix:
         else:
             # Matrix multiplication handled by __mul__()
             return NotImplemented
+    
+    def markov_entropy(self, other):
+        # Check that 'other' is a Matrix object
+        if not isinstance(other, Matrix):
+            raise Exception("Equilibrium distribution must be a Matrix.")
+
+        # Check that 'other' is a vector with appropriate dimensions
+        if other.length != 1 and other.height != 1:
+            raise Exception("Equilibrium distribution must be a vector.")
+
+        # Flatten the equilibrium distribution
+        P = [item for row in other.matrix for item in row]
+
+        # Normalize P in case it is not normalized
+        total_P = sum(P)
+        if total_P == 0:
+            raise Exception("Equilibrium distribution sums to zero.")
+
+        P = [p / total_P for p in P]
+
+        # Initialize entropy
+        entropy = 0.0
+
+        num_states = self.height  # Assuming square matrix
+
+        if self.height != self.length:
+            raise Exception("Transition matrix must be square.")
+
+        # For each state i
+        for i in range(num_states):
+            # For state i, compute sum over j of M_{ij} * log2 M_{ij}
+            state_entropy = 0.0
+
+            for j in range(num_states):
+                state_entropy += self.matrix[j][i] * math.log2(self.matrix[i][j])
+
+            # Multiply by P_i
+            entropy += P[i] * state_entropy
+
+        # Negate the sum to get entropy
+        entropy = -entropy
+
+        return entropy
+
         
 class MatrixSolver():
+    @staticmethod
+    def markov_entropy(transition: Matrix, equilibrum: Matrix, mode="str"):
+        entropy = transition.markov_entropy(equilibrum)
+        return f"Markov Entropy = {entropy:.2f}\n"
+
     @staticmethod
     def find_null_vector(matrix: Matrix, fixed_vector: str, mode="str"):
         if len(fixed_vector) != matrix.length: return "Fixed vector is an incorrect length.\n"
@@ -266,3 +313,4 @@ class MatrixSolver():
                 message += "If there is only one error it is at position " + str(error + 1) + ", giving corrected codeword " + str(corrected_word.transpose()) + ".\n"
 
         return message
+

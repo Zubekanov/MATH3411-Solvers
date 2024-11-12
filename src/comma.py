@@ -302,7 +302,78 @@ class Comma:
         
         return f"Length of extension is {average_length}.\n"
 
-    # @staticmethod
-    # def comma_code_generator(input: List[str]):
-    #     code = int(input[0])
-    #     contents = input[1:]
+    @staticmethod
+    def shannon_fano(input: List[str]) -> str:
+        """
+        Computes the average codeword length for Shannon-Fano coding and returns it as a fraction.
+        
+        Parameters:
+        - input (List[str]): A list of strings where:
+            - input[0] is the radix (e.g., '2' for binary),
+            - input[1:-1] are the numerators (frequency counts) as strings,
+            - input[-1] is the denominator (total frequency) as a string.
+        
+        Returns:
+        - str: A string representing the average codeword length in the form 'Average length is X/Y bits'.
+        """
+        # Validate input length
+        if len(input) < 3:
+            return "Error: Insufficient input. Expected at least radix, one numerator, and denominator."
+
+        try:
+            # Extract radix
+            radix = int(input[0])
+
+            # Extract numerators and denominator
+            numerators = [int(i) for i in input[1:-1]]
+            denominator = int(input[-1])
+
+            # Validate denominator
+            if denominator == 0:
+                return "Error: Denominator cannot be zero."
+
+            # Validate numerators and compute probabilities as Fractions
+            probabilities = []
+            for num in numerators:
+                if num < 0:
+                    return "Error: Numerators cannot be negative."
+                prob = Fraction(num, denominator)
+                if prob > 1:
+                    return "Error: Probability cannot exceed 1."
+                probabilities.append(prob)
+
+            # Validate that probabilities sum to 1 (within a tolerance)
+            total_prob = sum(probabilities)
+            if not math.isclose(float(total_prob), 1.0, abs_tol=1e-6):
+                return f"Error: Probabilities sum to {float(total_prob)}, expected 1."
+
+            # Compute codeword lengths and average length
+            total_length = Fraction(0, 1)
+            for prob in probabilities:
+                if prob == 0:
+                    return "Error: Probability of zero encountered."
+                # Compute codeword length: ceil(-log_r(p_i))
+                log_prob = math.log(prob, radix)
+                ceil_length = math.ceil(-log_prob)
+                total_length += prob * ceil_length
+
+            # Represent the average length as a fraction
+            return f"Average length is {total_length} bits"
+
+        except ValueError:
+            return "Error: Invalid input format. Ensure all inputs are integers."
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    @staticmethod
+    def huffman_conv(input: List[str]):
+        radix = int(input[0])
+        numerators = [int(x) for x in input[1:-1]]
+        denominator = int(input[-1])
+
+        floats = [numerator / denominator for numerator in numerators]
+        sum = 0
+        for float in floats:
+            sum -= float * math.log(float, radix)
+        
+        return f"Average codeword length as n → ∞ is {sum:.3f}"
