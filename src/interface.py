@@ -1,5 +1,6 @@
 from ascii import ASCII
 from comma import Comma
+from comma import BCHCode
 from enum import Enum
 from isbn import ISBN
 from matrix import *
@@ -21,6 +22,7 @@ class Command(Enum):
     HUFFMANCONV     = "HUFFMANCONV" .upper()
     ISBN            = "ISBN"        .upper()
     INVERSE         = "INVERSE"     .upper()
+    IOC             = "IOC"         .upper()
     KMT             = "KMT"         .upper()
     MUL             = "MUL"         .upper()
     NULL            = "NULL"        .upper()
@@ -31,9 +33,13 @@ class Command(Enum):
     PRIMITIVES      = "PRIMITIVES"  .upper()
     QUIT            = "QUIT"        .upper()
     SHANNON_FANO    = "SF"          .upper()
+    SHANNON_CODE    = "SFC"         .upper()
     SPHERE_PACKING  = "SPB"         .upper()
     SYMBOLS         = "SYMBOLS"     .upper()
     TOTIENT         = "TOTIENT"     .upper()
+    V_DECRYPT       = "V_DECRYPT"   .upper()
+    BCH_ENCODE      = "BCH_ENCODE"  .upper()
+    BCH_DECODE      = "BCH_DECODE"  .upper()
 
 class Interface:
     exit_flag = False
@@ -107,6 +113,10 @@ class Interface:
                 self.print(NumberTheory.inverse(query_tokens[1:]))
                 return
 
+            case Command.IOC.value:
+                Misc.analyze_and_decrypt_ciphertext("".join(query_tokens[1:]))
+                return
+
             case Command.KMT.value:
                 self.print(Comma.kraftmcmillan(query_tokens[1:]))
                 return
@@ -143,12 +153,33 @@ class Interface:
                 self.print(Comma.shannon_fano(query_tokens[1:]))
                 return
             
+            case Command.SHANNON_CODE.value:
+                self.print(Comma.generate_shannon_fano_code(query_tokens[1:]))
+                return
+            
             case Command.SPHERE_PACKING.value:
                 self.print(Misc.sphere_packing_bounds(query_tokens[1:]))
                 return
             
             case Command.TOTIENT.value:
                 self.print(NumberTheory.interface_totient(query_tokens[1:]))
+                return
+
+            case Command.V_DECRYPT.value:
+                self.print(Misc.vigenere_decrypt("".join(query_tokens[1:-1]), query_tokens[-1]))
+
+            case Command.BCH_ENCODE.value:
+                # Handle BCH encoding
+                result = BCHCode.bch_encode(query_tokens[1:])
+                self.print("Encoded codeword polynomial coefficients: " + ','.join(map(str, result)))
+                return
+
+            case Command.BCH_DECODE.value:
+                # Handle BCH decoding
+                corrected_codeword, message = BCHCode.bch_decode(query_tokens[1:])
+                self.print("Corrected codeword polynomial coefficients: " + ','.join(map(str, corrected_codeword)))
+                self.print("Decoded message polynomial coefficients: " + ','.join(map(str, message)))
+                return
 
             case _:
                 self.print("\"" + query_head + "\" is not a supported command.")

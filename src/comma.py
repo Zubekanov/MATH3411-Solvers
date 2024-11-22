@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Tuple
 import math
 from fractions import Fraction
 import heapq
@@ -304,35 +304,18 @@ class Comma:
 
     @staticmethod
     def shannon_fano(input: List[str]) -> str:
-        """
-        Computes the average codeword length for Shannon-Fano coding and returns it as a fraction.
-        
-        Parameters:
-        - input (List[str]): A list of strings where:
-            - input[0] is the radix (e.g., '2' for binary),
-            - input[1:-1] are the numerators (frequency counts) as strings,
-            - input[-1] is the denominator (total frequency) as a string.
-        
-        Returns:
-        - str: A string representing the average codeword length in the form 'Average length is X/Y bits'.
-        """
-        # Validate input length
         if len(input) < 3:
             return "Error: Insufficient input. Expected at least radix, one numerator, and denominator."
 
         try:
-            # Extract radix
             radix = int(input[0])
 
-            # Extract numerators and denominator
             numerators = [int(i) for i in input[1:-1]]
             denominator = int(input[-1])
 
-            # Validate denominator
             if denominator == 0:
                 return "Error: Denominator cannot be zero."
 
-            # Validate numerators and compute probabilities as Fractions
             probabilities = []
             for num in numerators:
                 if num < 0:
@@ -342,28 +325,78 @@ class Comma:
                     return "Error: Probability cannot exceed 1."
                 probabilities.append(prob)
 
-            # Validate that probabilities sum to 1 (within a tolerance)
             total_prob = sum(probabilities)
             if not math.isclose(float(total_prob), 1.0, abs_tol=1e-6):
                 return f"Error: Probabilities sum to {float(total_prob)}, expected 1."
 
-            # Compute codeword lengths and average length
             total_length = Fraction(0, 1)
             for prob in probabilities:
                 if prob == 0:
                     return "Error: Probability of zero encountered."
-                # Compute codeword length: ceil(-log_r(p_i))
                 log_prob = math.log(prob, radix)
                 ceil_length = math.ceil(-log_prob)
                 total_length += prob * ceil_length
 
-            # Represent the average length as a fraction
             return f"Average length is {total_length} bits"
 
         except ValueError:
             return "Error: Invalid input format. Ensure all inputs are integers."
         except Exception as e:
             return f"Error: {str(e)}"
+
+    @staticmethod
+    def generate_shannon_fano_code(input: List[str]):
+        radix = int(input[0])
+        numerators = [int(i) for i in input[1:-1]]
+        denominator = int(input[-1])
+        probabilities = [n / denominator for n in numerators]
+
+        word_lengths = [math.ceil(-math.log(p, radix)) for p in probabilities]
+
+        sorted_indices = sorted(range(len(probabilities)), key=lambda i: -probabilities[i])
+        sorted_lengths = [word_lengths[i] for i in sorted_indices]
+
+        codeword_set = set()
+        codewords = [None] * len(numerators)
+        next_codeword = [0] * max(sorted_lengths)
+
+        for idx, length in enumerate(sorted_lengths):
+            while True:
+                codeword = ''.join(str(d) for d in next_codeword[:length])
+                is_prefix_free = all(not codeword.startswith(cw) and not cw.startswith(codeword) for cw in codeword_set)
+                if is_prefix_free:
+                    break
+                for i in reversed(range(length)):
+                    if next_codeword[i] < radix - 1:
+                        next_codeword[i] += 1
+                        for j in range(i + 1, length):
+                            next_codeword[j] = 0
+                        break
+                else:
+                    raise ValueError("Cannot assign codeword; all combinations exhausted.")
+
+            codeword_set.add(codeword)
+            original_index = sorted_indices[idx]
+            codewords[original_index] = codeword
+
+            if next_codeword[length - 1] < radix - 1:
+                next_codeword[length - 1] += 1
+            else:
+                for i in reversed(range(length)):
+                    if next_codeword[i] < radix - 1:
+                        next_codeword[i] += 1
+                        for j in range(i + 1, length):
+                            next_codeword[j] = 0
+                        break
+                else:
+                    next_codeword = [0] * (max(sorted_lengths) + 1)
+
+        result = ""
+        position = 1
+        for codeword in codewords:
+            result += f"Codeword S_{position} = {codeword}\n"
+            position += 1
+        return result
 
     @staticmethod
     def huffman_conv(input: List[str]):
@@ -377,3 +410,509 @@ class Comma:
             sum -= float * math.log(float, radix)
         
         return f"Average codeword length as n → ∞ is {sum:.3f}"
+
+class BCHCode:
+    @staticmethod
+    def poly_add(a: List[int], b: List[int], modulus: int) -> List[int]:
+        # Same as before
+        max_len = max(len(a), len(b))
+        result = []
+        for i in range(max_len):
+            coeff_a = a[i] if i < len(a) else 0
+            coeff_b = b[i] if i < len(b) else 0
+            result.append((coeff_a + coeff_b) % modulus)
+        # Remove leading zeros
+        while len(result) > 1 and result[-1] == 0:
+            result.pop()
+        return result
+
+    @staticmethod
+    def poly_sub(a: List[int], b: List[int], modulus: int) -> List[int]:
+        # Subtraction is the same as addition in GF(2)
+        return BCHCode.poly_add(a, b, modulus)
+
+    @staticmethod
+    def poly_mul(a: List[int], b: List[int], modulus: int) -> List[int]:
+        # Same as before
+        result = [0] * (len(a) + len(b) - 1)
+        for i, coeff_a in enumerate(a):
+            for j, coeff_b in enumerate(b):
+                result[i + j] = (result[i + j] + coeff_a * coeff_b) % modulus
+        # Remove leading zeros
+        while len(result) > 1 and result[-1] == 0:
+            result.pop()
+        return result
+
+    @staticmethod
+    def poly_divmod(a: List[int], b: List[int], modulus: int) -> Tuple[List[int], List[int]]:
+        # Adjusted for binary field
+        a = a[:]
+        quotient = [0] * (len(a) - len(b) + 1)
+        while len(a) >= len(b):
+            degree_diff = len(a) - len(b)
+            quotient[degree_diff] = 1
+            subtract_poly = [0] * degree_diff + b
+            a = BCHCode.poly_sub(a, subtract_poly, modulus)
+            # Remove leading zeros
+            while len(a) > 0 and a[-1] == 0:
+                a.pop()
+        remainder = a
+        return quotient, remainder
+
+    @staticmethod
+    def poly_eval(poly: List[int], x: int, field_size: int, modulus_poly: int) -> int:
+        """
+        Evaluates a polynomial at a given point x in GF(2^m) using the field representation.
+        """
+        result = 0
+        for coeff in reversed(poly):
+            result = (result * x + coeff) % field_size
+            # Reduce modulo the modulus polynomial if necessary
+            if result >= field_size:
+                result ^= modulus_poly
+        return result
+
+    @staticmethod
+    def bch_encode(input: List[str]) -> List[int]:
+        # Same as before
+        modulus = int(input[0])
+        information_poly_coeffs = [int(c) for c in input[1].split(',')]
+        generator_poly_coeffs = [int(c) for c in input[2].split(',')]
+
+        # Reverse the polynomials to have lowest degree first
+        information_poly_coeffs = information_poly_coeffs[::-1]
+        generator_poly_coeffs = generator_poly_coeffs[::-1]
+
+        # Multiply I(x) by x^(n - k), where n is the code length and k is the message length
+        n = len(generator_poly_coeffs) + len(information_poly_coeffs) - 1
+        k = len(information_poly_coeffs)
+        shifted_information = [0] * (n - k) + information_poly_coeffs
+
+        # Compute the remainder R(x) = shifted_information mod generator_poly
+        _, remainder = BCHCode.poly_divmod(shifted_information, generator_poly_coeffs, modulus)
+
+        # Compute the codeword polynomial C(x) = shifted_information + remainder
+        codeword_poly_coeffs = BCHCode.poly_add(shifted_information, remainder, modulus)
+
+        # Reverse back to highest degree first
+        codeword_poly_coeffs = codeword_poly_coeffs[::-1]
+
+        return codeword_poly_coeffs
+
+    @staticmethod
+    def bch_decode(input: List[str]) -> Tuple[List[int], List[int]]:
+        """
+        Decodes the received codeword using the BCH decoding algorithm.
+        input: A list of strings where
+            input[0]: modulus (field characteristic, e.g., '2' for binary field)
+            input[1]: received codeword coefficients (comma-separated string)
+            input[2]: generator polynomial coefficients (comma-separated string)
+            input[3]: field extension degree m (for GF(2^m))
+            input[4]: modulus polynomial coefficients for GF(2^m) (comma-separated string)
+        Returns a tuple of:
+            - corrected codeword polynomial coefficients as a list of integers
+            - decoded message polynomial coefficients as a list of integers
+        """
+        # Parse input
+        modulus = int(input[0])
+        received_poly_coeffs = [int(c) for c in input[1].split(',')]
+        generator_poly_coeffs = [int(c) for c in input[2].split(',')]
+        m = int(input[3])
+        modulus_poly_coeffs = [int(c) for c in input[4].split(',')]
+
+        # Reverse the polynomials to have lowest degree first
+        received_poly_coeffs = received_poly_coeffs[::-1]
+        generator_poly_coeffs = generator_poly_coeffs[::-1]
+        modulus_poly = BCHCode.poly_to_int(modulus_poly_coeffs)
+
+        # Field size
+        field_size = 2 ** m
+
+        # Step 1: Compute syndromes
+        t = (len(generator_poly_coeffs) - 1) // m  # Error-correcting capability
+        syndromes = []
+        for i in range(1, 2 * t + 1):
+            s = BCHCode.evaluate_syndrome(received_poly_coeffs, i, m, modulus_poly)
+            syndromes.append(s)
+
+        # Check if all syndromes are zero (no errors)
+        if all(s == 0 for s in syndromes):
+            # No errors, return the message part of the codeword
+            corrected_codeword = received_poly_coeffs[::-1]
+            message = corrected_codeword[-(len(received_poly_coeffs) - len(generator_poly_coeffs) + 1):]
+            return corrected_codeword, message
+
+        # Step 2: Use Berlekamp-Massey algorithm to find error locator polynomial
+        sigma = BCHCode.berlekamp_massey_algorithm(syndromes, field_size, modulus_poly)
+
+        # Step 3: Find the roots of the error locator polynomial (Chien search)
+        error_positions = BCHCode.chien_search(sigma, field_size, modulus_poly)
+
+        # Step 4: Correct the errors in the received codeword
+        corrected_poly = received_poly_coeffs[:]
+        for position in error_positions:
+            corrected_poly[position] ^= 1  # Flip the bit
+
+        # Step 5: Extract the original message
+        corrected_codeword = corrected_poly[::-1]
+        message_length = len(corrected_codeword) - len(generator_poly_coeffs) + 1
+        message = corrected_codeword[-message_length:]
+
+        return corrected_codeword, message
+
+    @staticmethod
+    def poly_to_int(poly_coeffs: List[int]) -> int:
+        """
+        Converts a polynomial represented by coefficients to an integer.
+        """
+        result = 0
+        for coeff in poly_coeffs:
+            result = (result << 1) | coeff
+        return result
+
+    @staticmethod
+    def int_to_poly(x: int, degree: int) -> List[int]:
+        """
+        Converts an integer to a polynomial represented by coefficients.
+        """
+        coeffs = []
+        for i in range(degree + 1):
+            coeffs.append((x >> i) & 1)
+        return coeffs
+
+    @staticmethod
+    def evaluate_syndrome(received_poly: List[int], power: int, m: int, modulus_poly: int) -> int:
+        """
+        Evaluates the syndrome S_power for the received polynomial.
+        """
+        # Generate alpha^power
+        alpha_power = BCHCode.gf_pow(2, power, m, modulus_poly)
+        # Evaluate the polynomial at alpha^power
+        syndrome = 0
+        for i, coeff in enumerate(received_poly):
+            if coeff != 0:
+                exp = (i * power) % (2 ** m - 1)
+                term = BCHCode.gf_pow(2, exp, m, modulus_poly)
+                syndrome ^= term
+        return syndrome
+
+    @staticmethod
+    def gf_pow(base: int, exp: int, m: int, modulus_poly: int) -> int:
+        """
+        Computes base^exp in GF(2^m) using the modulus polynomial.
+        """
+        result = 1
+        for _ in range(exp):
+            result = BCHCode.gf_mult(result, base, modulus_poly)
+        return result
+
+    @staticmethod
+    def gf_mult(a: int, b: int, modulus_poly: int) -> int:
+        """
+        Multiplies two elements in GF(2^m) represented as integers.
+        """
+        result = 0
+        while b > 0:
+            if b & 1:
+                result ^= a
+            a <<= 1
+            if a & (1 << modulus_poly.bit_length() - 1):
+                a ^= modulus_poly
+            b >>= 1
+        return result
+
+    @staticmethod
+    def berlekamp_massey_algorithm(syndromes: List[int], field_size: int, modulus_poly: int) -> List[int]:
+        """
+        Implements the Berlekamp-Massey algorithm to find the error locator polynomial.
+        """
+        n = len(syndromes)
+        c = [1] + [0] * n  # Error locator polynomial
+        b = [1] + [0] * n
+        l = 0
+        m = -1
+        for r in range(n):
+            # Compute discrepancy
+            d = syndromes[r]
+            for i in range(1, l + 1):
+                d ^= BCHCode.gf_mult(c[i], syndromes[r - i], modulus_poly)
+            if d != 0:
+                temp = c[:]
+                for i in range(r - m, n):
+                    c[i] ^= BCHCode.gf_mult(d, b[i - (r - m)], modulus_poly)
+                if 2 * l <= r:
+                    l = r + 1 - l
+                    m = r
+                    b = temp
+        # Truncate the polynomial to degree l
+        return c[:l + 1]
+
+    @staticmethod
+    def chien_search(sigma: List[int], field_size: int, modulus_poly: int) -> List[int]:
+        """
+        Performs Chien search to find the roots of the error locator polynomial.
+        Returns the error positions.
+        """
+        error_positions = []
+        n = field_size - 1
+        for i in range(n):
+            x = BCHCode.gf_pow(2, i, modulus_poly.bit_length() - 1, modulus_poly)
+            result = 0
+            for coeff in reversed(sigma):
+                result = BCHCode.gf_mult(result, x, modulus_poly) ^ coeff
+            if result == 0:
+                error_positions.append(n - 1 - i)
+        return error_positions
+
+class BCHCode:
+    @staticmethod
+    def poly_add(a: List[int], b: List[int], modulus: int) -> List[int]:
+        # Same as before
+        max_len = max(len(a), len(b))
+        result = []
+        for i in range(max_len):
+            coeff_a = a[i] if i < len(a) else 0
+            coeff_b = b[i] if i < len(b) else 0
+            result.append((coeff_a + coeff_b) % modulus)
+        # Remove leading zeros
+        while len(result) > 1 and result[-1] == 0:
+            result.pop()
+        return result
+
+    @staticmethod
+    def poly_sub(a: List[int], b: List[int], modulus: int) -> List[int]:
+        # Subtraction is the same as addition in GF(2)
+        return BCHCode.poly_add(a, b, modulus)
+
+    @staticmethod
+    def poly_mul(a: List[int], b: List[int], modulus: int) -> List[int]:
+        # Same as before
+        result = [0] * (len(a) + len(b) - 1)
+        for i, coeff_a in enumerate(a):
+            for j, coeff_b in enumerate(b):
+                result[i + j] = (result[i + j] + coeff_a * coeff_b) % modulus
+        # Remove leading zeros
+        while len(result) > 1 and result[-1] == 0:
+            result.pop()
+        return result
+
+    @staticmethod
+    def poly_divmod(a: List[int], b: List[int], modulus: int) -> Tuple[List[int], List[int]]:
+        # Adjusted for binary field
+        a = a[:]
+        quotient = [0] * (len(a) - len(b) + 1)
+        while len(a) >= len(b):
+            degree_diff = len(a) - len(b)
+            quotient[degree_diff] = 1
+            subtract_poly = [0] * degree_diff + b
+            a = BCHCode.poly_sub(a, subtract_poly, modulus)
+            # Remove leading zeros
+            while len(a) > 0 and a[-1] == 0:
+                a.pop()
+        remainder = a
+        return quotient, remainder
+
+    @staticmethod
+    def poly_eval(poly: List[int], x: int, field_size: int, modulus_poly: int) -> int:
+        """
+        Evaluates a polynomial at a given point x in GF(2^m) using the field representation.
+        """
+        result = 0
+        for coeff in reversed(poly):
+            result = (result * x + coeff) % field_size
+            # Reduce modulo the modulus polynomial if necessary
+            if result >= field_size:
+                result ^= modulus_poly
+        return result
+
+    @staticmethod
+    def bch_encode(input: List[str]) -> List[int]:
+        # Same as before
+        modulus = int(input[0])
+        information_poly_coeffs = [int(c) for c in input[1].split(',')]
+        generator_poly_coeffs = [int(c) for c in input[2].split(',')]
+
+        # Reverse the polynomials to have lowest degree first
+        information_poly_coeffs = information_poly_coeffs[::-1]
+        generator_poly_coeffs = generator_poly_coeffs[::-1]
+
+        # Multiply I(x) by x^(n - k), where n is the code length and k is the message length
+        n = len(generator_poly_coeffs) + len(information_poly_coeffs) - 1
+        k = len(information_poly_coeffs)
+        shifted_information = [0] * (n - k) + information_poly_coeffs
+
+        # Compute the remainder R(x) = shifted_information mod generator_poly
+        _, remainder = BCHCode.poly_divmod(shifted_information, generator_poly_coeffs, modulus)
+
+        # Compute the codeword polynomial C(x) = shifted_information + remainder
+        codeword_poly_coeffs = BCHCode.poly_add(shifted_information, remainder, modulus)
+
+        # Reverse back to highest degree first
+        codeword_poly_coeffs = codeword_poly_coeffs[::-1]
+
+        return codeword_poly_coeffs
+
+    @staticmethod
+    def bch_decode(input: List[str]) -> Tuple[List[int], List[int]]:
+        """
+        Decodes the received codeword using the BCH decoding algorithm.
+        input: A list of strings where
+            input[0]: modulus (field characteristic, e.g., '2' for binary field)
+            input[1]: received codeword coefficients (comma-separated string)
+            input[2]: generator polynomial coefficients (comma-separated string)
+            input[3]: field extension degree m (for GF(2^m))
+            input[4]: modulus polynomial coefficients for GF(2^m) (comma-separated string)
+        Returns a tuple of:
+            - corrected codeword polynomial coefficients as a list of integers
+            - decoded message polynomial coefficients as a list of integers
+        """
+        # Parse input
+        modulus = int(input[0])
+        received_poly_coeffs = [int(c) for c in input[1].split(',')]
+        generator_poly_coeffs = [int(c) for c in input[2].split(',')]
+        m = int(input[3])
+        modulus_poly_coeffs = [int(c) for c in input[4].split(',')]
+
+        # Reverse the polynomials to have lowest degree first
+        received_poly_coeffs = received_poly_coeffs[::-1]
+        generator_poly_coeffs = generator_poly_coeffs[::-1]
+        modulus_poly = BCHCode.poly_to_int(modulus_poly_coeffs)
+
+        # Field size
+        field_size = 2 ** m
+
+        # Step 1: Compute syndromes
+        t = (len(generator_poly_coeffs) - 1) // m  # Error-correcting capability
+        syndromes = []
+        for i in range(1, 2 * t + 1):
+            s = BCHCode.evaluate_syndrome(received_poly_coeffs, i, m, modulus_poly)
+            syndromes.append(s)
+
+        # Check if all syndromes are zero (no errors)
+        if all(s == 0 for s in syndromes):
+            # No errors, return the message part of the codeword
+            corrected_codeword = received_poly_coeffs[::-1]
+            message = corrected_codeword[-(len(received_poly_coeffs) - len(generator_poly_coeffs) + 1):]
+            return corrected_codeword, message
+
+        # Step 2: Use Berlekamp-Massey algorithm to find error locator polynomial
+        sigma = BCHCode.berlekamp_massey_algorithm(syndromes, field_size, modulus_poly)
+
+        # Step 3: Find the roots of the error locator polynomial (Chien search)
+        error_positions = BCHCode.chien_search(sigma, field_size, modulus_poly)
+
+        # Step 4: Correct the errors in the received codeword
+        corrected_poly = received_poly_coeffs[:]
+        for position in error_positions:
+            corrected_poly[position] ^= 1  # Flip the bit
+
+        # Step 5: Extract the original message
+        corrected_codeword = corrected_poly[::-1]
+        message_length = len(corrected_codeword) - len(generator_poly_coeffs) + 1
+        message = corrected_codeword[-message_length:]
+
+        return corrected_codeword, message
+
+    @staticmethod
+    def poly_to_int(poly_coeffs: List[int]) -> int:
+        """
+        Converts a polynomial represented by coefficients to an integer.
+        """
+        result = 0
+        for coeff in poly_coeffs:
+            result = (result << 1) | coeff
+        return result
+
+    @staticmethod
+    def int_to_poly(x: int, degree: int) -> List[int]:
+        """
+        Converts an integer to a polynomial represented by coefficients.
+        """
+        coeffs = []
+        for i in range(degree + 1):
+            coeffs.append((x >> i) & 1)
+        return coeffs
+
+    @staticmethod
+    def evaluate_syndrome(received_poly: List[int], power: int, m: int, modulus_poly: int) -> int:
+        """
+        Evaluates the syndrome S_power for the received polynomial.
+        """
+        # Generate alpha^power
+        alpha_power = BCHCode.gf_pow(2, power, m, modulus_poly)
+        # Evaluate the polynomial at alpha^power
+        syndrome = 0
+        for i, coeff in enumerate(received_poly):
+            if coeff != 0:
+                exp = (i * power) % (2 ** m - 1)
+                term = BCHCode.gf_pow(2, exp, m, modulus_poly)
+                syndrome ^= term
+        return syndrome
+
+    @staticmethod
+    def gf_pow(base: int, exp: int, m: int, modulus_poly: int) -> int:
+        """
+        Computes base^exp in GF(2^m) using the modulus polynomial.
+        """
+        result = 1
+        for _ in range(exp):
+            result = BCHCode.gf_mult(result, base, modulus_poly)
+        return result
+
+    @staticmethod
+    def gf_mult(a: int, b: int, modulus_poly: int) -> int:
+        """
+        Multiplies two elements in GF(2^m) represented as integers.
+        """
+        result = 0
+        while b > 0:
+            if b & 1:
+                result ^= a
+            a <<= 1
+            if a & (1 << modulus_poly.bit_length() - 1):
+                a ^= modulus_poly
+            b >>= 1
+        return result
+
+    @staticmethod
+    def berlekamp_massey_algorithm(syndromes: List[int], field_size: int, modulus_poly: int) -> List[int]:
+        """
+        Implements the Berlekamp-Massey algorithm to find the error locator polynomial.
+        """
+        n = len(syndromes)
+        c = [1] + [0] * n  # Error locator polynomial
+        b = [1] + [0] * n
+        l = 0
+        m = -1
+        for r in range(n):
+            # Compute discrepancy
+            d = syndromes[r]
+            for i in range(1, l + 1):
+                d ^= BCHCode.gf_mult(c[i], syndromes[r - i], modulus_poly)
+            if d != 0:
+                temp = c[:]
+                for i in range(r - m, n):
+                    c[i] ^= BCHCode.gf_mult(d, b[i - (r - m)], modulus_poly)
+                if 2 * l <= r:
+                    l = r + 1 - l
+                    m = r
+                    b = temp
+        # Truncate the polynomial to degree l
+        return c[:l + 1]
+
+    @staticmethod
+    def chien_search(sigma: List[int], field_size: int, modulus_poly: int) -> List[int]:
+        """
+        Performs Chien search to find the roots of the error locator polynomial.
+        Returns the error positions.
+        """
+        error_positions = []
+        n = field_size - 1
+        for i in range(n):
+            x = BCHCode.gf_pow(2, i, modulus_poly.bit_length() - 1, modulus_poly)
+            result = 0
+            for coeff in reversed(sigma):
+                result = BCHCode.gf_mult(result, x, modulus_poly) ^ coeff
+            if result == 0:
+                error_positions.append(n - 1 - i)
+        return error_positions
